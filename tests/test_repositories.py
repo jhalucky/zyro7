@@ -5,8 +5,7 @@ from backend.app.repositories.agent_run import AgentRunRepository
 from backend.app.repositories.project import ProjectRepository
 
 
-def test_create_and_get_project():
-    db = SessionLocal()
+def test_create_and_get_project(db):
 
     try:
         repository = ProjectRepository(db)
@@ -23,8 +22,8 @@ def test_create_and_get_project():
         db.close()
 
 
-def test_create_and_get_agent_run():
-    db = SessionLocal()
+def test_create_and_get_agent_run(db):
+    
 
     try:
         project_repository = ProjectRepository(db)
@@ -50,8 +49,8 @@ def test_create_and_get_agent_run():
         db.close()
 
 
-def test_agent_run_state_persists():
-    db = SessionLocal()
+def test_agent_run_state_persists(db):
+    # db = SessionLocal()
 
     try:
         project_repository = ProjectRepository(db)
@@ -82,4 +81,3 @@ def test_agent_run_state_persists():
         db.close()
 
 
-        

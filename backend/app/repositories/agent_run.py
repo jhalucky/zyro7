@@ -21,7 +21,7 @@ class AgentRunRepository:
         )
 
         self.db.add(model)
-        self.db.commit()
+        self.db.flush()  # Flush to assign an ID to the model before committing
         self.db.refresh(model)
 
         return model
@@ -35,7 +35,7 @@ class AgentRunRepository:
     
     def update(self, run: AgentRun) -> AgentRunModel | None:
         model = self.get(run.id)
-        
+
         if not model:
             return None
 
@@ -43,7 +43,7 @@ class AgentRunRepository:
         model.plan = run.plan
         model.updated_at = run.updated_at
 
-        self.db.commit()
+        self.db.flush()  # Flush to update the model before committing
         self.db.refresh(model)
 
         return model

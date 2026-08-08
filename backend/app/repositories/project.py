@@ -11,7 +11,7 @@ class ProjectRepository:
         project = ProjectModel(name=name)
 
         self.db.add(project)
-        self.db.commit()
+        self.db.flush()  # Flush to assign an ID to the project before committing
         self.db.refresh(project)
         
         return project
