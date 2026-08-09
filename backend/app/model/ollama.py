@@ -1,6 +1,7 @@
 import httpx
 
 from .base import ModelProvider
+from .types import ModelRequest, ModelResponse
 
 
 class OllamaProvider(ModelProvider):
@@ -14,13 +15,22 @@ class OllamaProvider(ModelProvider):
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
 
-    def generate(self, prompt: str) -> str:
+    def generate(self, request: ModelRequest) -> ModelResponse:
         response = httpx.post(
-            f"{self.base_url}/api/generate",
+            f"{self.base_url}/api/chat",
             json={
                 "model": self.model,
-                "prompt": prompt,
+                "messages": [
+                    {
+                        "role": message.role,
+                        "content": message.content,
+                    }
+                    for message in request.messages
+                ],
                 "stream": False,
+                "options": {
+                    "temperature": request.temperature,
+                },
             },
             timeout=self.timeout,
         )
@@ -29,4 +39,23 @@ class OllamaProvider(ModelProvider):
 
         data = response.json()
 
-        return data["response"]
+        message = data["message"]
+
+        return ModelResponse(
+            content=message["content"],
+            finish_reason=data.get("done_reason"),
+            usage={
+                "prompt_tokens": data.get("prompt_eval_count", 0),
+                "completion_tokens": data.get("eval_count", 0),
+                "prompt_eval_duration_ns": data.get(
+                    "prompt_eval_duration", 0
+                ),
+                "completion_eval_duration_ns": data.get(
+                    "eval_duration", 0
+                ),
+            },
+            metadata={
+                "model": data.get("model"),
+                "created_at": data.get("created_at"),
+            },
+        )
