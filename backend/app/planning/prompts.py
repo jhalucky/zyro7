@@ -2,6 +2,7 @@ from backend.app.planning.config import (
     DEFAULT_FRAMEWORK,
     DEFAULT_PACKAGE_MANAGER,
 )
+from backend.app.planning.analysis import RequirementAnalysis
 
 
 PLANNER_SYSTEM_PROMPT = f"""
@@ -61,11 +62,25 @@ Do not include explanations before or after the JSON.
 """.strip()
 
 
-def build_planner_prompt(requirement: str) -> str:
-    return f"""
-User application requirement:
+def build_planner_prompt(
+    analysis: RequirementAnalysis,
+) -> str:
+    constraints = "\n".join(
+        f"- {constraint}"
+        for constraint in analysis.constraints
+    )
 
-{requirement}
+    if not constraints:
+        constraints = "- None specified"
+
+    return f"""
+Application requirement:
+
+{analysis.summary}
+
+Explicit user constraints:
+
+{constraints}
 
 Create the application plan according to the planning rules.
 """.strip()

@@ -2,6 +2,7 @@ import json
 
 from backend.app.model.base import ModelProvider
 from backend.app.model.types import Message, ModelRequest
+from backend.app.planning.analysis import AnalysisStatus, RequirementAnalysis
 from backend.app.planning.plan import PlanningResult
 from backend.app.planning.prompts import (
     PLANNER_SYSTEM_PROMPT,
@@ -13,9 +14,14 @@ class Planner:
     def __init__(self, model: ModelProvider):
         self.model = model
 
-    def create_plan(self, requirement: str) -> PlanningResult:
-        if not requirement.strip():
-            raise ValueError("Requirement cannot be empty.")
+    def create_plan(
+        self,
+        analysis: RequirementAnalysis,
+    ) -> PlanningResult:
+        if analysis.status != AnalysisStatus.READY:
+            raise ValueError(
+                "Planner requires a READY requirement analysis."
+            )
 
         request = ModelRequest(
             messages=[
@@ -25,7 +31,7 @@ class Planner:
                 ),
                 Message(
                     role="user",
-                    content=build_planner_prompt(requirement),
+                    content=build_planner_prompt(analysis),
                 ),
             ],
             temperature=0.2,
