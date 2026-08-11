@@ -1,4 +1,4 @@
-import json
+from backend.app.structured.parser import StructuredOutputParser
 
 from backend.app.model.base import ModelProvider
 from backend.app.model.types import Message, ModelRequest
@@ -11,8 +11,9 @@ from backend.app.planning.prompts import (
 
 
 class Planner:
-    def __init__(self, model: ModelProvider):
+    def __init__(self, model: ModelProvider, parser: StructuredOutputParser | None = None):
         self.model = model
+        self.parser = parser or StructuredOutputParser()
 
     def create_plan(
         self,
@@ -39,6 +40,7 @@ class Planner:
 
         response = self.model.generate(request)
 
-        data = json.loads(response.content)
-
-        return PlanningResult.model_validate(data)
+        return self.parser.parse(
+            response.content,
+            PlanningResult,
+        )

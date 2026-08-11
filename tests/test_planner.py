@@ -3,6 +3,7 @@ from backend.app.planning.analysis import (
     AnalysisStatus,
     RequirementAnalysis,
 )
+from backend.app.structured.errors import StructuredOutputError
 from backend.app.model.base import ModelProvider
 from backend.app.model.types import ModelRequest, ModelResponse
 from backend.app.planning.planner import Planner
@@ -70,7 +71,7 @@ def test_planner_rejects_invalid_json():
         constraints=[],
     )
 
-    with pytest.raises(ValueError):
+    with pytest.raises(StructuredOutputError):
         planner.create_plan(analysis)
 
 
