@@ -4,6 +4,7 @@ from enum import Enum
 class PlanningStatus(str, Enum):
     READY = "ready"
     NEEDS_CLARIFICATION = "needs_clarification"
+    VALIDATION_FAILED = "validation_failed"
 
 
 class ApplicationPlan(BaseModel):
@@ -21,9 +22,12 @@ class ApplicationPlan(BaseModel):
     pages: list[str] = Field(default_factory=list)
     tasks: list[str] = Field(default_factory=list)
 
+    
+
 
 class PlanningResult(BaseModel):
     status: PlanningStatus
     plan: ApplicationPlan | None = None
     message: str | None = None
     questions: list[str] = Field(default_factory=list)
+    validation_errors: list[str] = Field(default_factory=list)
