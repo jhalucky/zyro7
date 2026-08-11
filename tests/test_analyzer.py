@@ -3,6 +3,7 @@ from backend.app.model.base import ModelProvider
 from backend.app.model.types import ModelRequest, ModelResponse
 from backend.app.planning.analysis import AnalysisStatus
 from backend.app.planning.analyzer import RequirementAnalyzer
+from backend.app.structured.errors import StructuredOutputError
 
 
 class ReadyAnalyzerModel(ModelProvider):
@@ -72,7 +73,7 @@ class InvalidAnalyzerModel(ModelProvider):
 def test_analyzer_rejects_invalid_json():
     analyzer = RequirementAnalyzer(InvalidAnalyzerModel())
 
-    with pytest.raises(ValueError):
+    with pytest.raises(StructuredOutputError):
         analyzer.analyze(
             "Create a portfolio website."
         )

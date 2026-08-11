@@ -1,4 +1,4 @@
-import json
+from backend.app.structured.parser import StructuredOutputParser
 
 from backend.app.model.base import ModelProvider
 from backend.app.model.types import Message, ModelRequest
@@ -10,8 +10,9 @@ from backend.app.planning.analyzer_prompts import (
 
 
 class RequirementAnalyzer:
-    def __init__(self, model: ModelProvider):
+    def __init__(self, model: ModelProvider, parser: StructuredOutputParser | None = None):
         self.model = model
+        self.parser = parser or StructuredOutputParser()
 
     def analyze(self, requirement: str) -> RequirementAnalysis:
         if not requirement.strip():
@@ -33,6 +34,7 @@ class RequirementAnalyzer:
 
         response = self.model.generate(request)
 
-        data = json.loads(response.content)
-
-        return RequirementAnalysis.model_validate(data)
+        return self.parser.parse(
+            response.content,
+            RequirementAnalysis,
+        )
