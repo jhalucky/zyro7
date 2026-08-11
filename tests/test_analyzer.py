@@ -1,7 +1,7 @@
 import pytest
 from backend.app.model.base import ModelProvider
 from backend.app.model.types import ModelRequest, ModelResponse
-from backend.app.planning.analysis import AnalysisStatus
+from backend.app.planning.analysis import AnalysisStatus, RequirementAnalysis
 from backend.app.planning.analyzer import RequirementAnalyzer
 from backend.app.structured.errors import StructuredOutputError
 
@@ -134,3 +134,38 @@ def test_analyzer_extracts_constraints():
     assert result.status == AnalysisStatus.READY
     assert "Next.js" in result.constraints
     assert "Tailwind CSS" in result.constraints
+
+class FakeParser:
+    def __init__(self, result):
+        self.result = result
+        self.called = False
+        self.content = None
+        self.schema = None
+
+    def parse(self, content, schema):
+        self.called = True
+        self.content = content
+        self.schema = schema
+        return self.result
+    
+def test_analyzer_uses_structured_output_parser():
+    expected = RequirementAnalysis(
+        status=AnalysisStatus.READY,
+        summary="A coffee shop landing page.",
+        constraints=[],
+        questions=[],
+    )
+
+    parser = FakeParser(expected)
+    analyzer = RequirementAnalyzer(
+        ReadyAnalyzerModel(),
+        parser=parser,
+    )
+
+    result = analyzer.analyze(
+        "Create a coffee shop landing page."
+    )
+
+    assert result is expected
+    assert parser.called is True
+    assert parser.schema is RequirementAnalysis

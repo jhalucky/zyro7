@@ -7,6 +7,11 @@ from backend.app.structured.errors import StructuredOutputError
 from backend.app.model.base import ModelProvider
 from backend.app.model.types import ModelRequest, ModelResponse
 from backend.app.planning.planner import Planner
+from backend.app.planning.plan import (
+    ApplicationPlan,
+    PlanningResult,
+    PlanningStatus,
+)
 
 
 class FakePlannerModel(ModelProvider):
@@ -75,18 +80,18 @@ def test_planner_rejects_invalid_json():
         planner.create_plan(analysis)
 
 
-class ClarificationModel(ModelProvider):
-    def generate(self, request: ModelRequest) -> ModelResponse:
-        return ModelResponse(
-            content="""
-            {
-                "status": "needs_clarification",
-                "questions": [
-                    "What type of coffee shop application do you want to build?"
-                ]
-            }
-            """
-        )
+# class ClarificationModel(ModelProvider):
+#     def generate(self, request: ModelRequest) -> ModelResponse:
+#         return ModelResponse(
+#             content="""
+#             {
+#                 "status": "needs_clarification",
+#                 "questions": [
+#                     "What type of coffee shop application do you want to build?"
+#                 ]
+#             }
+#             """
+#         )
 
 
 
@@ -103,3 +108,48 @@ def test_planner_rejects_ambiguous_analysis():
 
     with pytest.raises(ValueError):
         planner.create_plan(analysis)
+
+class FakeParser:
+    def __init__(self, result):
+        self.result = result
+        self.called = False
+        self.content = None
+        self.schema = None
+
+    def parse(self, content, schema):
+        self.called = True
+        self.content = content
+        self.schema = schema
+        return self.result
+    
+
+def test_planner_uses_structured_output_parser():
+    expected = PlanningResult(
+        status=PlanningStatus.READY,
+        plan=ApplicationPlan(
+            name="Coffee Shop",
+            description="A coffee shop landing page.",
+            application_type="web",
+            framework="React",
+            package_manager="npm",
+        ),
+    )
+
+    parser = FakeParser(expected)
+
+    planner = Planner(
+        FakePlannerModel(),
+        parser=parser,
+    )
+
+    analysis = RequirementAnalysis(
+        status=AnalysisStatus.READY,
+        summary="A coffee shop landing page.",
+        constraints=[],
+    )
+
+    result = planner.create_plan(analysis)
+
+    assert result is expected
+    assert parser.called is True
+    assert parser.schema is PlanningResult
