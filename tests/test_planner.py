@@ -80,20 +80,6 @@ def test_planner_rejects_invalid_json():
         planner.create_plan(analysis)
 
 
-# class ClarificationModel(ModelProvider):
-#     def generate(self, request: ModelRequest) -> ModelResponse:
-#         return ModelResponse(
-#             content="""
-#             {
-#                 "status": "needs_clarification",
-#                 "questions": [
-#                     "What type of coffee shop application do you want to build?"
-#                 ]
-#             }
-#             """
-#         )
-
-
 
 def test_planner_rejects_ambiguous_analysis():
     planner = Planner(FakePlannerModel())
