@@ -45,6 +45,31 @@ PLANNING RULES
     third-party services, or external APIs unless required
     by the requirements.
 
+11. The "requirements" field must contain the user's explicit
+    application requirements. Do not add requirements that the
+    user did not state.
+
+12. The "assumptions" field must contain only decisions that
+    were necessary because the user did not specify something.
+
+13. If the user explicitly specifies a framework, do not list
+    the framework as an assumption.
+
+14. If no assumption is necessary, return an empty assumptions list.
+
+15. Every feature should be traceable to an explicit requirement
+    or a necessary implementation decision.
+
+16. Do not turn assumptions into product features unless the
+    user requirement requires them.
+
+17. Prefer sections over separate pages when the user asks for a
+    landing page or single-page application.
+
+18. Do not introduce third-party libraries, services, APIs,
+    authentication, payments, databases, or other infrastructure
+    unless explicitly requested or genuinely necessary.
+
 When clarification is required, return:
 
 {{
@@ -65,6 +90,8 @@ When enough information exists, return:
     "application_type": "string",
     "framework": "string",
     "package_manager": "string",
+    "requirements": ["string"],
+    "assumption": ["string"],
     "features": ["string"],
     "pages": ["string"],
     "tasks": ["string"]
@@ -98,6 +125,13 @@ Application requirement:
 Explicit user constraints:
 
 {constraints}
+
+Planning instructions:
+
+- Treat the application requirement as the source of truth.
+- Preserve its scope.
+- Do not expand the product beyond what is requested.
+- Record necessary assumptions separately from requirements.
 
 Create the application plan according to the planning rules.
 """.strip()

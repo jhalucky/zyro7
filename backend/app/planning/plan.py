@@ -14,6 +14,9 @@ class ApplicationPlan(BaseModel):
     framework: str = Field(min_length=1)
     package_manager: str = Field(min_length=1)
 
+    requirements: list[str] = Field(default_factory=list)
+    assumptions: list[str] = Field(default_factory=list)
+
     features: list[str] = Field(default_factory=list)
     pages: list[str] = Field(default_factory=list)
     tasks: list[str] = Field(default_factory=list)

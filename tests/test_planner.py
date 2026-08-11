@@ -17,45 +17,61 @@ from backend.app.planning.plan import (
 class FakePlannerModel(ModelProvider):
     def generate(self, request: ModelRequest) -> ModelResponse:
         return ModelResponse(
-            content="""
-           {
-                "status": "ready",
-                "plan": {
-                    "name": "Coffee Shop",
-                    "description": "A modern coffee shop landing page",
-                    "application_type": "web",
-                    "framework": "Next.js",
-                    "package_manager": "npm",
-                    "features": [
-                        "hero",
-                        "menu",
-                        "contact"
-                    ],
-                    "pages": [
-                        "/"
-                    ],
-                    "tasks": [
-                        "Initialize project",
-                        "Create landing page",
-                        "Run build"
-                    ]
-                }
-            }
-            """
+         content="""
+                    {
+                        "status": "ready",
+                        "plan": {
+                            "name": "Coffee Shop",
+                            "description": "A modern coffee shop landing page",
+                            "application_type": "web",
+                            "framework": "React",
+                            "package_manager": "npm",
+                            "requirements": [
+                                "A modern coffee shop landing page"
+                            ],
+                            "assumptions": [
+                                "React is used because no framework was specified"
+                            ],
+                            "features": [
+                                "hero",
+                                "menu",
+                                "contact"
+                            ],
+                            "pages": [
+                                "/"
+                            ],
+                            "tasks": [
+                                "Initialize project",
+                                "Create landing page",
+                                "Run build"
+                            ]
+                        }
+                    }
+                    """
         )
 
 
 def test_planner_creates_application_plan():
     planner = Planner(FakePlannerModel())
+
     analysis = RequirementAnalysis(
         status=AnalysisStatus.READY,
         summary="A coffee shop landing page.",
-        constraints=[], 
+        constraints=[],
     )
 
     result = planner.create_plan(analysis)
+
     assert result.status == "ready"
     assert result.plan is not None
+
+    assert result.plan.requirements == [
+        "A modern coffee shop landing page"
+    ]
+
+    assert result.plan.assumptions == [
+        "React is used because no framework was specified"
+    ]
 
     
 
