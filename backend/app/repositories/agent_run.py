@@ -16,8 +16,9 @@ class AgentRunRepository:
             prompt=run.prompt,
             state=run.state.value,
             plan=run.plan,
+            verification=run.verification,
             created_at=run.created_at,
-            updated_at=run.updated_at
+            updated_at=run.updated_at,
         )
 
         self.db.add(model)
@@ -41,6 +42,7 @@ class AgentRunRepository:
 
         model.state = run.state.value
         model.plan = run.plan
+        model.verification = run.verification
         model.updated_at = run.updated_at
 
         self.db.flush()  # Flush to update the model before committing

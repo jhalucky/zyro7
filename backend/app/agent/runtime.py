@@ -6,6 +6,7 @@ from backend.app.planning.plan import ApplicationPlan
 from backend.app.repositories.agent_run import AgentRunRepository
 from backend.app.execution.verifier import BuildVerifier
 from backend.app.execution.runner import ExecutionResult
+from backend.app.execution.installer import DependencyInstaller
 
 
 class AgentRuntime:
@@ -15,11 +16,13 @@ class AgentRuntime:
         run_repository: AgentRunRepository,
         project_generator: ProjectGenerator,
         build_verifier: BuildVerifier,
+        dependency_installer: DependencyInstaller,
     ):
         self.planning_pipeline = planning_pipeline
         self.run_repository = run_repository
         self.project_generator = project_generator
         self.build_verifier = build_verifier
+        self.dependency_installer = dependency_installer
 
     def plan(self, run: AgentRun) -> None:
         run.transition_to(AgentState.PLANNING)
@@ -49,9 +52,19 @@ class AgentRuntime:
 
         run.transition_to(AgentState.GENERATING)
 
-        plan = ApplicationPlan.model_validate(run.plan)
+        plan = self._application_plan_from_dict(run.plan)
 
         self.project_generator.generate(plan)
+
+        install_result = self.dependency_installer.install(
+            plan.package_manager
+        )
+
+        if not install_result.success:
+            raise RuntimeError(
+                "Dependency installation failed:\n"
+                + install_result.stderr
+            )
 
         run.transition_to(AgentState.GENERATED)
 
@@ -70,7 +83,7 @@ class AgentRuntime:
 
         run.transition_to(AgentState.VERIFYING)
 
-        plan = ApplicationPlan.model_validate(run.plan)
+        plan = self._application_plan_from_dict(run.plan)
 
         result = self.build_verifier.verify(plan)
 
@@ -90,3 +103,9 @@ class AgentRuntime:
         self.run_repository.update(run)
 
         return result
+
+    @staticmethod
+    def _application_plan_from_dict(
+        data: dict,
+    ) -> ApplicationPlan:
+        return ApplicationPlan.model_validate(data)

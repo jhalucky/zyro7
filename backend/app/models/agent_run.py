@@ -38,6 +38,11 @@ class AgentRunModel(Base):
         nullable=True
     )
 
+    verification: Mapped[dict | None] = mapped_column(
+    JSON,
+    nullable=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

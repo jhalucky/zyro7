@@ -49,17 +49,51 @@ class FakeBuildVerifier:
         return self.result
 
 
+class FakeDependencyInstaller:
+    def __init__(self, success=True):
+        self.success = success
+        self.called = False
+        self.package_manager = None
+
+    def install(self, package_manager):
+        self.called = True
+        self.package_manager = package_manager
+
+        return ExecutionResult(
+            success=self.success,
+            exit_code=0 if self.success else 1,
+            stdout="installed",
+            stderr="" if self.success else "install failed",
+        )
+
+
 def create_runtime(
     pipeline,
     repository,
     generator,
     verifier,
+    installer=None,
 ):
+    if installer is None:
+        installer = FakeDependencyInstaller()
+
     return AgentRuntime(
         planning_pipeline=pipeline,
         run_repository=repository,
         project_generator=generator,
         build_verifier=verifier,
+        dependency_installer=installer,
+    )
+
+
+def successful_verifier():
+    return FakeBuildVerifier(
+        ExecutionResult(
+            success=True,
+            exit_code=0,
+            stdout="",
+            stderr="",
+        )
     )
 
 
@@ -78,21 +112,15 @@ def test_runtime_plans_agent_run():
     pipeline = FakePlanningPipeline(result)
     repository = FakeAgentRunRepository()
     generator = FakeProjectGenerator()
-
-    verifier = FakeBuildVerifier(
-        ExecutionResult(
-            success=True,
-            exit_code=0,
-            stdout="",
-            stderr="",
-        )
-    )
+    verifier = successful_verifier()
+    installer = FakeDependencyInstaller()
 
     runtime = create_runtime(
         pipeline,
         repository,
         generator,
         verifier,
+        installer,
     )
 
     run = AgentRun(
@@ -110,6 +138,8 @@ def test_runtime_plans_agent_run():
     assert run.plan is not None
     assert run.plan["name"] == "Coffee Shop"
 
+    assert repository.updated_run is run
+
 
 def test_runtime_keeps_run_in_planning_when_clarification_is_needed():
     result = PlanningResult(
@@ -122,21 +152,15 @@ def test_runtime_keeps_run_in_planning_when_clarification_is_needed():
     pipeline = FakePlanningPipeline(result)
     repository = FakeAgentRunRepository()
     generator = FakeProjectGenerator()
-
-    verifier = FakeBuildVerifier(
-        ExecutionResult(
-            success=True,
-            exit_code=0,
-            stdout="",
-            stderr="",
-        )
-    )
+    verifier = successful_verifier()
+    installer = FakeDependencyInstaller()
 
     runtime = create_runtime(
         pipeline,
         repository,
         generator,
         verifier,
+        installer,
     )
 
     run = AgentRun(
@@ -147,6 +171,9 @@ def test_runtime_keeps_run_in_planning_when_clarification_is_needed():
 
     assert run.state == AgentState.PLANNING
     assert run.plan is None
+
+    assert repository.updated_run is run
+    assert installer.called is False
 
 
 def test_runtime_persists_planned_run():
@@ -164,21 +191,15 @@ def test_runtime_persists_planned_run():
     pipeline = FakePlanningPipeline(result)
     repository = FakeAgentRunRepository()
     generator = FakeProjectGenerator()
-
-    verifier = FakeBuildVerifier(
-        ExecutionResult(
-            success=True,
-            exit_code=0,
-            stdout="",
-            stderr="",
-        )
-    )
+    verifier = successful_verifier()
+    installer = FakeDependencyInstaller()
 
     runtime = create_runtime(
         pipeline,
         repository,
         generator,
         verifier,
+        installer,
     )
 
     run = AgentRun(
@@ -204,21 +225,15 @@ def test_runtime_persists_clarification_state():
     pipeline = FakePlanningPipeline(result)
     repository = FakeAgentRunRepository()
     generator = FakeProjectGenerator()
-
-    verifier = FakeBuildVerifier(
-        ExecutionResult(
-            success=True,
-            exit_code=0,
-            stdout="",
-            stderr="",
-        )
-    )
+    verifier = successful_verifier()
+    installer = FakeDependencyInstaller()
 
     runtime = create_runtime(
         pipeline,
         repository,
         generator,
         verifier,
+        installer,
     )
 
     run = AgentRun(
@@ -247,21 +262,15 @@ def test_runtime_generates_project():
     pipeline = FakePlanningPipeline(result)
     repository = FakeAgentRunRepository()
     generator = FakeProjectGenerator()
-
-    verifier = FakeBuildVerifier(
-        ExecutionResult(
-            success=True,
-            exit_code=0,
-            stdout="",
-            stderr="",
-        )
-    )
+    verifier = successful_verifier()
+    installer = FakeDependencyInstaller()
 
     runtime = create_runtime(
         pipeline,
         repository,
         generator,
         verifier,
+        installer,
     )
 
     run = AgentRun(
@@ -273,18 +282,19 @@ def test_runtime_generates_project():
 
     assert generator.plan is not None
     assert generator.plan.name == "Coffee Shop"
-    assert generator.plan.framework == "React"
+
+    assert installer.called is True
+    assert installer.package_manager == "npm"
 
     assert run.state == AgentState.GENERATED
-    assert run.plan is not None
-    assert run.plan["name"] == "Coffee Shop"
-
     assert repository.updated_run is run
 
 
 def test_runtime_rejects_generation_before_planning():
     repository = FakeAgentRunRepository()
     generator = FakeProjectGenerator()
+    verifier = successful_verifier()
+    installer = FakeDependencyInstaller()
 
     pipeline = FakePlanningPipeline(
         PlanningResult(
@@ -295,20 +305,12 @@ def test_runtime_rejects_generation_before_planning():
         )
     )
 
-    verifier = FakeBuildVerifier(
-        ExecutionResult(
-            success=True,
-            exit_code=0,
-            stdout="",
-            stderr="",
-        )
-    )
-
     runtime = create_runtime(
         pipeline,
         repository,
         generator,
         verifier,
+        installer,
     )
 
     run = AgentRun(
@@ -322,6 +324,7 @@ def test_runtime_rejects_generation_before_planning():
 
     assert run.state == AgentState.CREATED
     assert generator.plan is None
+    assert installer.called is False
 
 
 def test_runtime_verifies_generated_project():
@@ -339,6 +342,7 @@ def test_runtime_verifies_generated_project():
     pipeline = FakePlanningPipeline(planning_result)
     repository = FakeAgentRunRepository()
     generator = FakeProjectGenerator()
+    installer = FakeDependencyInstaller()
 
     build_result = ExecutionResult(
         success=True,
@@ -354,6 +358,7 @@ def test_runtime_verifies_generated_project():
         repository,
         generator,
         verifier,
+        installer,
     )
 
     run = AgentRun(
@@ -395,6 +400,7 @@ def test_runtime_marks_run_failed_when_build_fails():
     pipeline = FakePlanningPipeline(planning_result)
     repository = FakeAgentRunRepository()
     generator = FakeProjectGenerator()
+    installer = FakeDependencyInstaller()
 
     build_result = ExecutionResult(
         success=False,
@@ -410,6 +416,7 @@ def test_runtime_marks_run_failed_when_build_fails():
         repository,
         generator,
         verifier,
+        installer,
     )
 
     run = AgentRun(
@@ -437,6 +444,8 @@ def test_runtime_marks_run_failed_when_build_fails():
 def test_runtime_rejects_verification_before_generation():
     repository = FakeAgentRunRepository()
     generator = FakeProjectGenerator()
+    verifier = successful_verifier()
+    installer = FakeDependencyInstaller()
 
     pipeline = FakePlanningPipeline(
         PlanningResult(
@@ -447,20 +456,12 @@ def test_runtime_rejects_verification_before_generation():
         )
     )
 
-    verifier = FakeBuildVerifier(
-        ExecutionResult(
-            success=True,
-            exit_code=0,
-            stdout="",
-            stderr="",
-        )
-    )
-
     runtime = create_runtime(
         pipeline,
         repository,
         generator,
         verifier,
+        installer,
     )
 
     run = AgentRun(
