@@ -5,11 +5,20 @@ from uuid import UUID, uuid4
 
 from .state import AgentState
 
-ALLOWED_TRANSITIONS: dict[AgentState,
-set[AgentState]] = {
-    AgentState.CREATED : {AgentState.PLANNING},
-    AgentState.PLANNING : {AgentState.PLANNED},
-    AgentState.PLANNED: set()
+ALLOWED_TRANSITIONS: dict[AgentState, set[AgentState]] = {
+    AgentState.CREATED: {
+        AgentState.PLANNING,
+    },
+    AgentState.PLANNING: {
+        AgentState.PLANNED,
+    },
+    AgentState.PLANNED: {
+        AgentState.GENERATING,
+    },
+    AgentState.GENERATING: {
+        AgentState.GENERATED,
+    },
+    AgentState.GENERATED: set(),
 }
 
 @dataclass

@@ -37,3 +37,15 @@ def test_completed_state_cannot_be_reached_yet():
 
     with pytest.raises(ValueError):
         run.transition_to(AgentState.CREATED)
+
+def test_run_can_transition_through_generation():
+    run = AgentRun(
+        prompt="Create a coffee shop landing page"
+    )
+
+    run.transition_to(AgentState.PLANNING)
+    run.transition_to(AgentState.PLANNED)
+    run.transition_to(AgentState.GENERATING)
+    run.transition_to(AgentState.GENERATED)
+
+    assert run.state == AgentState.GENERATED
