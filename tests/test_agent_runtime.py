@@ -4,6 +4,7 @@ from uuid import uuid4
 from backend.app.agent.run import AgentRun
 from backend.app.agent.runtime import AgentRuntime
 from backend.app.agent.state import AgentState
+from backend.app.execution.runner import ExecutionResult
 from backend.app.planning.plan import (
     ApplicationPlan,
     PlanningResult,
@@ -38,6 +39,30 @@ class FakeProjectGenerator:
         self.plan = plan
 
 
+class FakeBuildVerifier:
+    def __init__(self, result):
+        self.result = result
+        self.plan = None
+
+    def verify(self, plan):
+        self.plan = plan
+        return self.result
+
+
+def create_runtime(
+    pipeline,
+    repository,
+    generator,
+    verifier,
+):
+    return AgentRuntime(
+        planning_pipeline=pipeline,
+        run_repository=repository,
+        project_generator=generator,
+        build_verifier=verifier,
+    )
+
+
 def test_runtime_plans_agent_run():
     result = PlanningResult(
         status=PlanningStatus.READY,
@@ -54,10 +79,20 @@ def test_runtime_plans_agent_run():
     repository = FakeAgentRunRepository()
     generator = FakeProjectGenerator()
 
-    runtime = AgentRuntime(
-        planning_pipeline=pipeline,
-        run_repository=repository,
-        project_generator=generator,
+    verifier = FakeBuildVerifier(
+        ExecutionResult(
+            success=True,
+            exit_code=0,
+            stdout="",
+            stderr="",
+        )
+    )
+
+    runtime = create_runtime(
+        pipeline,
+        repository,
+        generator,
+        verifier,
     )
 
     run = AgentRun(
@@ -88,10 +123,20 @@ def test_runtime_keeps_run_in_planning_when_clarification_is_needed():
     repository = FakeAgentRunRepository()
     generator = FakeProjectGenerator()
 
-    runtime = AgentRuntime(
-        planning_pipeline=pipeline,
-        run_repository=repository,
-        project_generator=generator,
+    verifier = FakeBuildVerifier(
+        ExecutionResult(
+            success=True,
+            exit_code=0,
+            stdout="",
+            stderr="",
+        )
+    )
+
+    runtime = create_runtime(
+        pipeline,
+        repository,
+        generator,
+        verifier,
     )
 
     run = AgentRun(
@@ -120,10 +165,20 @@ def test_runtime_persists_planned_run():
     repository = FakeAgentRunRepository()
     generator = FakeProjectGenerator()
 
-    runtime = AgentRuntime(
-        planning_pipeline=pipeline,
-        run_repository=repository,
-        project_generator=generator,
+    verifier = FakeBuildVerifier(
+        ExecutionResult(
+            success=True,
+            exit_code=0,
+            stdout="",
+            stderr="",
+        )
+    )
+
+    runtime = create_runtime(
+        pipeline,
+        repository,
+        generator,
+        verifier,
     )
 
     run = AgentRun(
@@ -150,10 +205,20 @@ def test_runtime_persists_clarification_state():
     repository = FakeAgentRunRepository()
     generator = FakeProjectGenerator()
 
-    runtime = AgentRuntime(
-        planning_pipeline=pipeline,
-        run_repository=repository,
-        project_generator=generator,
+    verifier = FakeBuildVerifier(
+        ExecutionResult(
+            success=True,
+            exit_code=0,
+            stdout="",
+            stderr="",
+        )
+    )
+
+    runtime = create_runtime(
+        pipeline,
+        repository,
+        generator,
+        verifier,
     )
 
     run = AgentRun(
@@ -183,10 +248,20 @@ def test_runtime_generates_project():
     repository = FakeAgentRunRepository()
     generator = FakeProjectGenerator()
 
-    runtime = AgentRuntime(
-        planning_pipeline=pipeline,
-        run_repository=repository,
-        project_generator=generator,
+    verifier = FakeBuildVerifier(
+        ExecutionResult(
+            success=True,
+            exit_code=0,
+            stdout="",
+            stderr="",
+        )
+    )
+
+    runtime = create_runtime(
+        pipeline,
+        repository,
+        generator,
+        verifier,
     )
 
     run = AgentRun(
@@ -220,10 +295,20 @@ def test_runtime_rejects_generation_before_planning():
         )
     )
 
-    runtime = AgentRuntime(
-        planning_pipeline=pipeline,
-        run_repository=repository,
-        project_generator=generator,
+    verifier = FakeBuildVerifier(
+        ExecutionResult(
+            success=True,
+            exit_code=0,
+            stdout="",
+            stderr="",
+        )
+    )
+
+    runtime = create_runtime(
+        pipeline,
+        repository,
+        generator,
+        verifier,
     )
 
     run = AgentRun(
@@ -237,3 +322,154 @@ def test_runtime_rejects_generation_before_planning():
 
     assert run.state == AgentState.CREATED
     assert generator.plan is None
+
+
+def test_runtime_verifies_generated_project():
+    planning_result = PlanningResult(
+        status=PlanningStatus.READY,
+        plan=ApplicationPlan(
+            name="Coffee Shop",
+            description="A coffee shop landing page.",
+            application_type="Web Application",
+            framework="React",
+            package_manager="npm",
+        ),
+    )
+
+    pipeline = FakePlanningPipeline(planning_result)
+    repository = FakeAgentRunRepository()
+    generator = FakeProjectGenerator()
+
+    build_result = ExecutionResult(
+        success=True,
+        exit_code=0,
+        stdout="Build successful",
+        stderr="",
+    )
+
+    verifier = FakeBuildVerifier(build_result)
+
+    runtime = create_runtime(
+        pipeline,
+        repository,
+        generator,
+        verifier,
+    )
+
+    run = AgentRun(
+        prompt="Create a coffee shop landing page."
+    )
+
+    runtime.plan(run)
+    runtime.generate(run)
+
+    result = runtime.verify(run)
+
+    assert result.success is True
+    assert result.exit_code == 0
+
+    assert run.state == AgentState.VERIFIED
+
+    assert run.verification is not None
+    assert run.verification["success"] is True
+    assert run.verification["exit_code"] == 0
+
+    assert verifier.plan is not None
+    assert verifier.plan.name == "Coffee Shop"
+
+    assert repository.updated_run is run
+
+
+def test_runtime_marks_run_failed_when_build_fails():
+    planning_result = PlanningResult(
+        status=PlanningStatus.READY,
+        plan=ApplicationPlan(
+            name="Broken Project",
+            description="A broken project.",
+            application_type="Web Application",
+            framework="React",
+            package_manager="npm",
+        ),
+    )
+
+    pipeline = FakePlanningPipeline(planning_result)
+    repository = FakeAgentRunRepository()
+    generator = FakeProjectGenerator()
+
+    build_result = ExecutionResult(
+        success=False,
+        exit_code=1,
+        stdout="",
+        stderr="Build failed",
+    )
+
+    verifier = FakeBuildVerifier(build_result)
+
+    runtime = create_runtime(
+        pipeline,
+        repository,
+        generator,
+        verifier,
+    )
+
+    run = AgentRun(
+        prompt="Create a broken project."
+    )
+
+    runtime.plan(run)
+    runtime.generate(run)
+
+    result = runtime.verify(run)
+
+    assert result.success is False
+    assert result.exit_code == 1
+
+    assert run.state == AgentState.FAILED
+
+    assert run.verification is not None
+    assert run.verification["success"] is False
+    assert run.verification["exit_code"] == 1
+    assert run.verification["stderr"] == "Build failed"
+
+    assert repository.updated_run is run
+
+
+def test_runtime_rejects_verification_before_generation():
+    repository = FakeAgentRunRepository()
+    generator = FakeProjectGenerator()
+
+    pipeline = FakePlanningPipeline(
+        PlanningResult(
+            status=PlanningStatus.NEEDS_CLARIFICATION,
+            questions=[
+                "What do you want to build?"
+            ],
+        )
+    )
+
+    verifier = FakeBuildVerifier(
+        ExecutionResult(
+            success=True,
+            exit_code=0,
+            stdout="",
+            stderr="",
+        )
+    )
+
+    runtime = create_runtime(
+        pipeline,
+        repository,
+        generator,
+        verifier,
+    )
+
+    run = AgentRun(
+        prompt="Build something."
+    )
+
+    assert run.state == AgentState.CREATED
+
+    with pytest.raises(ValueError):
+        runtime.verify(run)
+
+    assert run.state == AgentState.CREATED

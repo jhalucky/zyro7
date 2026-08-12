@@ -17,8 +17,17 @@ ALLOWED_TRANSITIONS: dict[AgentState, set[AgentState]] = {
     },
     AgentState.GENERATING: {
         AgentState.GENERATED,
+        AgentState.FAILED,
     },
-    AgentState.GENERATED: set(),
+    AgentState.GENERATED: {
+        AgentState.VERIFYING,
+    },
+    AgentState.VERIFYING: {
+        AgentState.VERIFIED,
+        AgentState.FAILED,
+    },
+    AgentState.VERIFIED: set(),
+    AgentState.FAILED: set(),
 }
 
 @dataclass
@@ -29,6 +38,7 @@ class AgentRun:
     id: UUID = field(default_factory=uuid4)
     state: AgentState = AgentState.CREATED
     plan: dict[str, Any] | None = None
+    verification: dict[str, Any] | None = None
 
     created_at: datetime = field(
         default_factory=lambda:
